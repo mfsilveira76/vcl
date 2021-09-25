@@ -1,0 +1,372 @@
+unit uVCLUSBCon;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, vcl.Forms, Types;
+type
+
+ TVCLUSBEventChange = procedure(Sender:TObject;sDevName:String; sKey:string; Vendor: string; Product : string; Serial:String; FullPath:string) of object;
+
+
+  SP_DEVINFO_DATA =  packed record
+    cbSize: DWORD ;
+    ClassGuid: TGUID;
+    DevInst: DWORD;    // DEVINST handle
+    Reserved:ULONG_PTR ;
+  end;
+  PSP_DEVINFO_DATA  = ^SP_DEVINFO_DATA;
+
+  PDevBroadcastHdr  = ^DEV_BROADCAST_HDR;
+  DEV_BROADCAST_HDR = packed record
+    dbch_size: DWORD;
+    dbch_devicetype: DWORD;
+    dbch_reserved: DWORD;
+  end;
+
+  PDevBroadcastDeviceInterface  = ^DEV_BROADCAST_DEVICEINTERFACE;
+  DEV_BROADCAST_DEVICEINTERFACE = record
+    dbcc_size: DWORD;
+    dbcc_devicetype: DWORD;
+    dbcc_reserved: DWORD;
+    dbcc_classguid: TGUID;
+    dbcc_name: char;
+  end;
+
+const
+
+  MAX_PATH = 260;
+  GUID_DEVINTERFACE_USB_DEVICE: TGUID = '{A5DCBF10-6530-11D2-901F-00C04FB951ED}';
+
+  DBT_DEVNODES =                $0007;  // Um dispositivo foi adicionado ou removido do sistema.
+  DBT_QUERYCHANGECONFIG =       $0017;	// A permissão é solicitada para alterar a configuração atual (Dock ou desencaixar).
+  DBT_ConfigChanged =           $0018;	// A configuração atual foi alterada devido a um encaixe ou desencaixe.
+  DBT_CONFIGCHANGECANCELED=     $0019;	// Uma solicitação para alterar a configuração atual (Dock ou Dock) foi cancelada.
+  DBT_DEVICEARRIVAL=            $8000;  // Um dispositivo ou parte da mídia foi inserido e agora está disponível.
+  DBT_DEVICEQUERYREMOVE =       $8001;  // A permissão é solicitada para remover um dispositivo ou parte da mídia. Qualquer aplicativo pode negar essa solicitação e cancelar a remoção.
+  DBT_DEVICEQUERYREMOVEFAILED=  $8002;  // Uma solicitação para remover um dispositivo ou parte da mídia foi cancelada.
+  DBT_DEVICEREMOVEPENDING=      $8003;  // Um dispositivo ou parte da mídia está prestes a ser removida. Não pode ser negado.
+  DBT_DEVICEREMOVECOMPLETE=     $8004;  // Um dispositivo ou parte da mídia foi removida.
+  DBT_DEVICETYPESPECIFIC =      $8005;  // Ocorreu um evento específico do dispositivo.
+  DBT_CUSTOMEVENT =             $8006;  // Ocorreu um evento personalizado
+  DBT_USERdefined =             $FFFF;  // Ocorreu um evento definido pelo usuário 
+
+  DBT_DEVTYP_DEVICEINTERFACE =  $00000005; // device interface class
+  SPDRP_FRIENDLYNAME         =  $0000000C;
+  SPDRP_DEVICEDESC           =  %00000000;
+
+  DIGCF_DEFAULT           = $00000001;  // only valid with DIGCF_DEVICEINTERFACE
+  DIGCF_PRESENT           = $00000002;
+  DIGCF_ALLCLASSES        = $00000004;
+  DIGCF_PROFILE           = $00000008;
+  DIGCF_DEVICEINTERFACE   = $00000010;
+
+  SetupApiModuleName = 'SetupAPI.dll';
+type
+    HDEVINFO = Pointer;
+  TVCLUSBCon = class(TComponent)
+  private
+    FWindowHandle: HWND;
+    FOnUsbDeviceRemove: TVCLUSBEventChange;
+    FOnUsbDeviceArrival: TVCLUSBEventChange;
+    procedure WndProc(var Msg: TMessage);
+    function USBRegister: Boolean;
+    procedure SetOnUsbDeviceArrival(const Value: TVCLUSBEventChange);
+    procedure SetOnUsbDeviceRemove(const Value: TVCLUSBEventChange);
+  protected
+    procedure WMDeviceChange(var Msg: TMessage); dynamic;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+
+    function GetUsbInfo(sDevId:String;wParam:UINT_PTR):string;
+
+    function FindUsbDevice(var Data:SP_DEVINFO_DATA; pDevInfo:HDEVINFO; sDeviceId: String):Boolean;
+
+  published
+    property OnUsbDeviceArrival:TVCLUSBEventChange read FOnUsbDeviceArrival write SetOnUsbDeviceArrival;
+    property OnUsbDeviceRemove:TVCLUSBEventChange read FOnUsbDeviceRemove write SetOnUsbDeviceRemove;
+  end;
+
+
+
+  TSetupDiGetDeviceRegistryProperty = function (DeviceInfoSet: HDEVINFO;
+                                                const DeviceInfoData: SP_DEVINFO_DATA;
+                                                Proper: DWORD;
+                                                var PropertyRegDataType: DWORD;
+                                                PropertyBuffer: PBYTE;
+                                                PropertyBufferSize:DWORD;
+                                                var RequiredSize:DWORD): BOOL; stdcall;
+
+  TSetupDiEnumDeviceInfo = function(  DeviceInfoSet: HDEVINFO;
+                                      MemberIndex: DWORD;
+                                      var DeviceInfoData: SP_DEVINFO_DATA): BOOL; stdcall;
+
+
+
+  TSetupDiGetDeviceInstanceId = function(   DeviceInfoSet: HDEVINFO;
+                                            DeviceInfoData:PSP_DEVINFO_DATA;
+                                            var DeviceInstanceId: Char;
+                                            DeviceInstanceIdSize:DWORD ;
+                                            var RequiredSize: DWORD):BOOL; stdcall;
+
+  TSetupDiGetClassDevs =  function( const GUID: PGUID;
+                                    numerator:PChar;
+                                    hwndParent: HWND;
+                                    Flags : DWORD): HDEVINFO; stdcall;
+
+
+
+procedure UnLoadModule;
+procedure LoadProcedures;
+procedure Erro(msg:STring);
+function  LoadProcedure(strName:String) : Pointer;
+procedure register;
+var
+  hModuleHandle:THandle;
+  SetupDiGetDeviceRegistryProperty: TSetupDiGetDeviceRegistryProperty;
+  SetupDiEnumDeviceInfo:            TSetupDiEnumDeviceInfo;
+  SetupDiGetDeviceInstanceId:       TSetupDiGetDeviceInstanceId;
+  SetupDiGetClassDevs:              TSetupDiGetClassDevs;
+
+implementation
+
+procedure LoadModule;
+    begin
+      hModuleHandle :=  LoadLibrary(SetupApiModuleName);
+      if hModuleHandle = INVALID_HANDLE_VALUE then
+        Erro(SetupAPIModulename);
+    end;
+procedure UnLoadModule;
+    begin
+      FreeLibrary(hModuleHandle);
+    end;
+procedure LoadProcedures;
+    begin
+
+      @SetupDiGetDeviceRegistryProperty := LoadProcedure('SetupDiGetDeviceRegistryPropertyW');
+      @SetupDiEnumDeviceInfo            := LoadProcedure('SetupDiEnumDeviceInfo');
+      @SetupDiGetDeviceInstanceId       := LoadProcedure('SetupDiGetDeviceInstanceIdW');
+      @SetupDiGetClassDevs              := LoadProcedure('SetupDiGetClassDevsW');
+    end;
+constructor TVCLUSBCon.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FWindowHandle := AllocateHWnd(WndProc);
+  USBRegister;
+end;
+
+destructor TVCLUSBCon.Destroy;
+begin
+  DeallocateHWnd(FWindowHandle);
+  inherited Destroy;
+end;
+
+function TVCLUSBCon.FindUsbDevice(var data: SP_DEVINFO_DATA ;pDevInfo:HDEVINFO;sDeviceId: String): Boolean;
+var
+  i:cardinal;
+  nSize:DWORD;
+  buf:array[0..MAX_PATH] of char;
+  err:Integer;
+  sAux:String;
+begin
+  i := 0;
+  Result := False;
+  Data.cbSize := sizeof(SP_DEVINFO_DATA);
+  while (SetupDiEnumDeviceInfo(pDevInfo, i, Data)) do
+    begin;
+      nSize := 0;
+      inc(i);
+      SetupDiGetDeviceInstanceId(PDevInfo, @Data, buf[1], sizeof(buf), nSize);
+      err := GetLastError();
+      sAux := pChar(buf[1]);
+      if (TRIM(sDeviceId) = TRIM( sAux)) then
+        begin
+          Result := true;
+          exit
+        end;
+
+
+    end;
+end;
+
+function TVCLUSBCon.GetUsbInfo(sDevId:String; wParam:UINT_PTR):String;
+var
+  spDevInfoData: SP_DEVINFO_DATA;
+  DataT:DWORD;
+  buf:array[0..MAX_PATH] of char;
+  nSize:DWORD;
+  pDevInfo:HDEVINFO;
+  dwFlag:DWORD;
+  err:Integer;
+begin
+  Result := '';
+
+  if wParam <> DBT_DEVICEARRIVAL then
+    dwFlag := DIGCF_ALLCLASSES
+  else
+    dwFlag := (DIGCF_ALLCLASSES or DIGCF_PRESENT);
+
+  pDevInfo := SetupDiGetClassDevs(nil,PwideChar('USB'),0,dwFlag);
+  err:=GetLastError();
+
+  if FindUsbDevice(spDevInfoData, pDevInfo,sDevId) then
+    begin
+      if (SetupDiGetDeviceRegistryProperty( pDevInfo,               // nome amigável ou
+                                    spDevInfoData,
+                                    SPDRP_FRIENDLYNAME,
+                                    DataT,
+                                    PBYTE(@buf[1]),
+                                    sizeof(buf),
+                                    nSize)) then
+      else if(SetupDiGetDeviceRegistryProperty( PDevInfo,          // descrição do dispositivo
+                                    spDevInfoData,
+			                              SPDRP_DEVICEDESC,
+                                    DataT,
+                                    PBYTE(@buf[1]),
+                                    sizeof(buf),
+                                    nSize))then
+      else
+        buf := 'Dispositivo desconhecido';
+      Result := PChar(@buf[1]);
+    end;
+
+    Result:='';
+end;
+procedure TVCLUSBCon.SetOnUsbDeviceArrival(const Value: TVCLUSBEventChange);
+begin
+  FOnUsbDeviceArrival := Value;
+end;
+procedure TVCLUSBCon.SetOnUsbDeviceRemove(const Value: TVCLUSBEventChange);
+begin
+  FOnUsbDeviceRemove := Value;
+end;
+procedure TVCLUSBCon.WndProc(var Msg: TMessage);
+begin
+  if (Msg.Msg = WM_DEVICECHANGE) then
+  begin
+    try
+      WMDeviceChange(Msg);
+    except
+      Application.HandleException(Self);
+    end;
+  end
+  else
+    Msg.Result := DefWindowProc(FWindowHandle, Msg.Msg, Msg.wParam, Msg.lParam);
+end;
+procedure TVCLUSBCon.WMDeviceChange(var Msg: TMessage);
+var
+  devType: Integer;
+  Dados: PDevBroadcastHdr;
+  pDeviceInt:PDevBroadcastDeviceInterface;
+
+  sKey,
+  sDevName,
+  sDeviceId,
+  sFullPath,
+  sSerialId,
+  sVendorId,
+  sAux,
+  sProdductId:String;
+begin
+  if (Msg.wParam = DBT_DEVICEARRIVAL) or (Msg.wParam = DBT_DEVICEREMOVECOMPLETE) then
+    begin
+      Dados := PDevBroadcastHdr(Msg.lParam);
+      devType := Dados^.dbch_devicetype;
+      sDevName := '';
+      if devType = DBT_DEVTYP_DEVICEINTERFACE then
+        begin // USB Device
+
+
+          pDeviceInt :=PDevBroadcastDeviceInterface(Dados);
+
+          sFullPath := '';
+          (* calcula o tamanho do dbcc_name *)
+
+
+          sFullPath := PChar(@pDEviceInt.dbcc_name);
+
+          // Exemplo:
+          //'\\?\USB#VID_13FE&PID_4300#270091C208820479#{a5dcbf10-6530-11d2-901f-00c04fb951ed}'
+
+          sAux := copy(sFullPath,pos('#',sFullPath) + 1,1026);
+          sKey := copy(sAux,1,pos('#',sAux) - 1);
+          sAux := copy(sAux,pos('#',sAux) + 1,1026);
+          sSerialId:= copy(sAux,1,pos('#',sAux) - 1);
+
+          sVendorId := copy(sKey,5,pos('&',skey)-5);
+          sProdductId := copy(skey,pos('&',sKey)+5,skey.Length);
+
+          // For usb device's id:
+          // USB\VID_aaaa&PID_bbbbb\cccccccc
+          sDeviceId := 'USB\'+sKey+'\'+sSerialId;
+
+          // Nome amigável
+         sDevName := GetUsbInfo(sDeviceId,Msg.WParam);
+
+          case(msg.WParam) of
+              //DBT_DEVNODES:
+              //DBT_QUERYCHANGECONFIG:
+              //DBT_ConfigChanged:
+              //DBT_CONFIGCHANGECANCELED:
+              DBT_DEVICEARRIVAL:
+              if Assigned(FOnUsbDeviceArrival) then
+                FOnUsbDeviceArrival(Self,sDevName,sKey,sVendorId,sProdductId,sSerialId,sFullPath);
+              //DBT_DEVICEQUERYREMOVE:
+              //DBT_DEVICEQUERYREMOVEFAILED:
+              //DBT_DEVICEREMOVEPENDING:
+              DBT_DEVICEREMOVECOMPLETE:
+              if Assigned(FOnUsbDeviceRemove) then
+                FOnUsbDeviceRemove(self,sDevName,sKey,sVendorId,sProdductId,sSerialId,sFullPath);
+              //DBT_DEVICETYPESPECIFIC:
+              //DBT_CUSTOMEVENT:
+              //DBT_USERdefined:
+          end;
+        end;
+    end;
+end;
+function TVCLUSBCon.USBRegister: Boolean;
+var
+  dbi: DEV_BROADCAST_DEVICEINTERFACE;
+  Size: Integer;
+  r: Pointer;
+begin
+  Result := False;
+  Size := SizeOf(DEV_BROADCAST_DEVICEINTERFACE);
+  ZeroMemory(@dbi, Size);
+  dbi.dbcc_size := Size;
+  dbi.dbcc_devicetype := DBT_DEVTYP_DEVICEINTERFACE;
+  dbi.dbcc_reserved := 0;
+  dbi.dbcc_classguid  := GUID_DEVINTERFACE_USB_DEVICE;
+  dbi.dbcc_name := #0;
+
+  r := RegisterDeviceNotification(FWindowHandle, @dbi,
+    DEVICE_NOTIFY_WINDOW_HANDLE
+    );
+  if Assigned(r) then Result := True;
+end;
+function LoadProcedure(strName:String) : Pointer;
+begin
+  result :=nil;
+  result := GetProcAddress(hModuleHandle,PChar(strName));
+  if Result = nil  then
+    Erro(strName);
+end;
+procedure Erro(msg:String);
+var er:Integer;
+begin
+  er := GetLastError();
+  raise Exception.create( 'Error Message: '+SysErrorMessage(er) + ' '+ InttoStr(er) + ' ' +msg);
+end;
+procedure register;
+begin
+  RegisterComponents('VCL Utils',[ TVCLUSBCon]);
+end;
+initialization
+  begin
+    loadModule;
+    loadprocedures;
+  end;
+finalization
+  UnLoadModule;
+end.

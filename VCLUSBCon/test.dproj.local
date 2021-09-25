@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2021/08/25 22:57:19.000.169,=C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\Unit2.pas</Transaction>
+    <Transaction>2021/09/16 23:53:13.000.144,=C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\Unit2.pas</Transaction>
+    <Transaction>2021/09/17 23:07:30.000.732,=C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\Unit2.pas</Transaction>
+    <Transaction>2021/09/24 18:29:28.000.416,=C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\Unit2.pas</Transaction>
+    <Transaction>2021/09/24 18:30:52.000.729,C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\Unit2.pas=D:\Delphi28\prj\VCLUSBCon\ufrmTest.pas</Transaction>
+    <Transaction>2021/09/24 18:30:52.000.729,C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\Unit2.dfm=D:\Delphi28\prj\VCLUSBCon\ufrmTest.dfm</Transaction>
+    <Transaction>2021/09/24 18:30:57.000.256,C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\Project2.dproj=D:\Delphi28\prj\VCLUSBCon\test.dproj</Transaction>
+  </Transactions>
+</BorlandProject>

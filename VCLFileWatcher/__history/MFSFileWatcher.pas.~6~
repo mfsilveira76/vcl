@@ -1,0 +1,420 @@
+(*
+  PROPRIEDADE AUTORAL
+
+  O direito de uso,comercialização e alteração é de Marcelo F. da Silveira
+  como seu criador e ou inventor, todos os direitos deste componente,  instituidos a ele
+
+ *)
+unit MFSFileWatcher;
+
+interface
+
+uses
+  Classes, Windows, SysUtils, Dialogs,WideStrUtils;
+type
+
+  TOrFileWatcher = class;
+  TSFileExceptionEvent = procedure( Sender:TObject; excep:Exception;Error:Integer)of Object;
+  TSFileChangedEvent = procedure( Sender: TObject; FileName: String) of Object;
+  // Files/Directory - Renamed
+  TSFileRenamedEvent = procedure( Sender: TObject; OldFileName: String; NewFileName: String) of Object;
+   // watch filters
+  TSWatchFilter = (nfFILE_NAME,nfDIR_NAME,nfATTRIBUTES,nfSIZE,nfLAST_WRITE,nfLAST_ACCESS,nfCREATION,nfSECURITY);
+  TSWatchFilters = set of TSWatchFilter;
+
+  TSWatchDirThread = class (TThread)
+  private
+    FParent: TOrFileWatcher;
+    FHShutdown, FHChange, FHFile:THandle;
+    FFilter: DWORD;
+  protected
+    function loadFilter:boolean;
+    procedure     Execute; override;
+  public
+
+    constructor Create(FParent:TOrFileWatcher);
+    destructor  Destroy; override;
+
+    procedure Shutdown;
+    procedure AfterConstruction; override;
+  end;
+
+  TOrFileWatcher = class (TComponent)
+  private
+    FWatchThread:TSWatchDirThread;
+    FActive: boolean;
+    FFileMonitoring: string;
+
+    FOnFileLastAccess: TSFileChangedEvent;
+    FOnFileModified: TSFileChangedEvent;
+    FOnFileCriated:  TSFileChangedEvent;
+    FOnFileDeleted:  TSFileChangedEvent;
+    FOnFileRemamed:  TSFileRenamedEvent;
+
+    FMonitoring:     TSWatchFilters;
+    FSubTree: boolean;
+    FAfterExecute: TNotifyEvent;
+    FOnException: TSFileExceptionEvent;
+
+
+    procedure SetFileMonitoring(const Value: string);
+    procedure SetOnFileCriated(const Value: TSFileChangedEvent);
+    procedure SetOnFileDeleted(const Value: TSFileChangedEvent);
+    procedure SetOnFileModified(const Value: TSFileChangedEvent);
+    procedure SetOnFileRemamed(const Value: TSFileRenamedEvent);
+    procedure SetMonitoring(const Value: TSWatchFilters);
+    procedure SetSubTree(const Value: boolean);
+    procedure SetAfterExecute(const Value: TNotifyEvent);
+    procedure SetFileLastAcess(const Value: TSFileChangedEvent);
+    procedure SetOnException(const Value: TSFileExceptionEvent);
+
+
+
+
+  protected
+    FPOutBuffer:PByteArray;
+    FHFile:THandle;
+
+    procedure doDeleted(sFileName:string);
+    procedure doCriaded(sFileName:string);
+    procedure doRenamed(sOldName:string; sNewName:string);
+    procedure doModified(sFileName:string);
+    procedure doLastAcess(sFileName:String);
+    procedure doException(execpt:Exception; Error:Integer);
+
+    procedure ReLoadFileHandle(sFileName:string);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+
+     procedure Start;
+     procedure Stop;
+
+  published
+    property FileMonitoring :string read FFileMonitoring write SetFileMonitoring;
+
+    property Monitoring:TSWatchFilters read FMonitoring write SetMonitoring;
+    property OnFileCriated:TSFileChangedEvent read FOnFileCriated write SetOnFileCriated;
+    property OnFileDeleted:TSFileChangedEvent read FOnFileDeleted write SetOnFileDeleted;
+    property OnFileModified:TSFileChangedEvent read FOnFileModified write SetOnFileModified;
+    property OnFileRemamed: TSFileRenamedEvent read FOnFileRemamed write SetOnFileRemamed;
+    property OnFileLastAccess: TSFileChangedEvent read FOnFileLastAccess write SetFileLastAcess;
+    property OnException:TSFileExceptionEvent read FOnException write SetOnException;
+
+    property SubTree:boolean read FSubTree write SetSubTree;
+    property AfterExecute:TNotifyEvent read FAfterExecute write SetAfterExecute;
+  end;
+
+  procedure Register;
+implementation
+
+{ TAWatchDirThread }
+
+procedure TSWatchDirThread.AfterConstruction;
+begin
+
+  inherited AfterConstruction;
+
+end;
+
+constructor TSWatchDirThread.Create(FParent:TOrFileWatcher);
+begin
+  inherited Create(true);
+  self.FParent    := FParent;
+  FHShutdown      := CreateEvent(nil,false, false, nil);
+  FHChange        := CreateEvent(nil,false, false, nil);
+  FFilter         := 0;
+ // Resume;
+
+end;
+
+destructor TSWatchDirThread.Destroy;
+begin
+  if FHChange <> 0 then
+    CloseHandle(FHChange);
+  if FHShutdown <> 0 then
+    CloseHandle(FHShutdown);
+  inherited Destroy;
+end;
+
+procedure TSWatchDirThread.Execute;
+
+type
+  PFileNotifyInformation = ^TFileNotifyInformation;
+  TFileNotifyInformation = record
+    NextEntryOffset: DWORD;
+    Action: DWORD;
+    FileNameLength: DWORD;
+    FileName: WideChar;
+
+  end;
+ const
+  BufferLength = 65536;
+
+var FileNameA,FileNameO,FileNameN:string;
+    Overlapped:TOverlapped;
+    ArrEvents: array[0..1] of THandle;
+    ResWait:Cardinal;
+    ResBuffer: array[0..BufferLength-1] of Byte;
+    ResBufferLength:Cardinal;
+    ResStruct:PFileNotifyInformation;
+    offSet, nextOffSet: DWORD;
+    FHFile:THandle;
+
+begin
+  FHFile := CreateFile(pchar( FParent.FFileMonitoring ),
+                      FILE_LIST_DIRECTORY OR GENERIC_READ,FILE_SHARE_READ OR FILE_SHARE_WRITE OR FILE_SHARE_DELETE,
+                      NIL,OPEN_EXISTING,FILE_FLAG_BACKUP_SEMANTICS OR FILE_FLAG_OVERLAPPED,
+                      0);
+  FillChar(overlapped,sizeof(TOverlapped),0);
+  FillChar(ResBuffer,sizeof(ResBuffer),0);
+
+  overlapped.hEvent := FHChange;
+  ResWait := 0;
+  ResBufferLength := 0;
+  offSet := 0;
+  nextOffSet :=0;
+
+  ArrEvents[0] := FHChange;   // quando acontece um evento de change of file
+  ArrEvents[1] := FHShutdown; // quando a thread é finalizada
+
+  if FParent.FHFile <> INVALID_HANDLE_VALUE then
+    begin
+     if loadFilter then
+        begin
+          while not Terminated do
+            begin
+              if  ReadDirectoryChanges(FHFile,@ResBuffer,BufferLength,fParent.SubTree,FFilter,@ResBufferLength,@Overlapped,nil) then
+                begin
+                  ResWait := WaitForMultipleObjects(2,@ArrEvents,FALSE,INFINITE);
+                  if ResWait = WAIT_FAILED then
+                    begin
+                      //
+                    end;
+                  if ResWait = WAIT_OBJECT_0 then
+                    begin
+                      ResStruct := @ResBuffer;
+                      offSet    := 0;
+                      { laço para percorrer registros atraves de um desvio em bytes
+                      quando nextOffSet for zero, saiu do laço }
+                      repeat
+
+                        FileNameA :=  System.WideCharLenToString(@ResStruct.FileName, trunc(ResStruct.FileNameLength/2));
+
+                        nextOffSet := ResStruct.NextEntryOffset;
+                        case ResStruct.Action of
+                          1: FParent.doCriaded(FileNameA);
+                          2: FParent.doDeleted(FileNameA);
+                          3: FParent.doModified(FileNameA);
+                          4..5:
+                            begin
+                              if ResStruct.Action = 4 then
+                                FileNameO := FileNameA;
+                              if ResStruct.Action = 5  then
+                                begin
+                                  FileNameN:=  FileNameA;
+                                  FParent.doRenamed(FileNameO,FileNameN);
+                                end;
+                            end;
+                          else FParent.doLastAcess(FileNameA+' vai saber ');
+                        end;
+                        PByte (ResStruct) := PByte(DWORD(ResStruct)+nextOffSet); // ATribui novo desvio para a strutura
+                        offSet := offSet +nextOffSet;
+                      until ( nextOffSet = 0 );
+                    end;
+                end
+              else
+                begin
+                  raise Exception.Create(' Falha ao monitorar arquivo ou diretório ');
+                end;
+            end ;
+        end;
+     end
+  else
+    begin
+      raise Exception.Create('File name '+FParent.FileMonitoring +' não existe'  );
+    end;
+
+  if FHFile <> 0  then
+    CloseHandle(FHFile) ;
+  if Assigned(FParent.FAfterExecute) then
+    FParent.FAfterExecute(Self);
+ end;
+
+
+
+function TSWatchDirThread.loadFilter:boolean;
+begin
+  with FParent do
+    begin
+      if (nfFILE_NAME in Monitoring) then
+        FFilter:=ffilter or FILE_NOTIFY_CHANGE_FILE_NAME;
+      if (nfDIR_NAME in Monitoring)  then
+        ffilter:=ffilter or FILE_NOTIFY_CHANGE_DIR_NAME;
+      if (nfATTRIBUTES in Monitoring) then
+        ffilter:=ffilter or FILE_NOTIFY_CHANGE_ATTRIBUTES;
+      if (nfSIZE in Monitoring)  then
+        ffilter:=ffilter or FILE_NOTIFY_CHANGE_SIZE;
+      if (nfLAST_WRITE in Monitoring) then
+        ffilter:=ffilter or FILE_NOTIFY_CHANGE_LAST_WRITE;
+      if (nfLAST_ACCESS in Monitoring)then
+        ffilter:=ffilter or FILE_NOTIFY_CHANGE_LAST_ACCESS;
+      if (nfCREATION in Monitoring)   then
+        ffilter:=ffilter or FILE_NOTIFY_CHANGE_CREATION;
+      if (nfSECURITY in Monitoring)   then
+        ffilter:=ffilter or FILE_NOTIFY_CHANGE_SECURITY;
+      result := FFilter > 0;
+    end;
+end;
+
+procedure TSWatchDirThread.Shutdown;
+begin
+  if FHShutdown <> 0 then
+    SetEvent(FHShutdown);
+ Terminate;
+
+end;
+
+{ TADirMonitor }
+
+constructor TOrFileWatcher.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  //FWatchThread := TSWatchDirThread.Create(Self);
+end;
+
+destructor TOrFileWatcher.Destroy;
+begin
+  if Assigned(FWatchThread) then
+    begin
+      FWatchThread.Shutdown;
+    end;
+  FreeAndNil(FWatchThread);
+  inherited;
+end;
+
+procedure TOrFileWatcher.doCriaded(sFileName: string);
+begin
+  if Assigned(FOnFileCriated)  then
+    FOnFileCriated(Self,sFileName);
+end;
+
+procedure TOrFileWatcher.doDeleted(sFileName: string);
+begin
+  if  Assigned(FOnFileDeleted)  then
+    FOnFileDeleted(self,sFileName);
+end;
+
+procedure TOrFileWatcher.doException(execpt: Exception; Error: Integer);
+begin
+  if Assigned(FOnException) then
+    FOnException(Self,execpt,Error);
+end;
+
+procedure TOrFileWatcher.doLastAcess(sFileName: String);
+begin
+  if Assigned(FOnFileLastAccess) then
+    FOnFileLastAccess(Self,sFileName);
+
+end;
+
+procedure TOrFileWatcher.doModified(sFileName: string);
+begin
+  if assigned(FOnFileModified) then
+    FOnFileModified(Self,sFileName);
+end;
+
+procedure TOrFileWatcher.doRenamed(sOldName, sNewName: string);
+begin
+  if Assigned(FOnFileRemamed) then
+    FOnFileRemamed(self,sOldName,sNewName);
+
+end;
+
+procedure TOrFileWatcher.ReLoadFileHandle(sFileName: string);
+begin
+  CloseHandle(FHFile);
+  FHFile := CreateFile(pchar(sFileName),FILE_LIST_DIRECTORY OR GENERIC_READ,FILE_SHARE_READ OR FILE_SHARE_WRITE OR FILE_SHARE_DELETE,NIL,OPEN_EXISTING,FILE_FLAG_BACKUP_SEMANTICS OR FILE_FLAG_OVERLAPPED,0);
+end;
+
+procedure TOrFileWatcher.SetAfterExecute(const Value: TNotifyEvent);
+begin
+  FAfterExecute := Value;
+end;
+
+procedure TOrFileWatcher.SetFileLastAcess(const Value: TSFileChangedEvent);
+begin
+  FOnFileLastAccess := Value;
+end;
+
+procedure TOrFileWatcher.SetFileMonitoring(const Value: string);
+begin
+  FFileMonitoring := Value;
+  ReLoadFileHandle(Value);
+  if FHFile = INVALID_HANDLE_VALUE then
+    begin
+    FFileMonitoring:='';
+      raise Exception.Create('Arquivo ou pasta não existe');
+    end;
+end;
+
+procedure TOrFileWatcher.SetMonitoring(const Value: TSWatchFilters);
+begin
+  FMonitoring := Value;
+end;
+
+procedure TOrFileWatcher.SetOnException(const Value: TSFileExceptionEvent);
+begin
+  FOnException := Value;
+end;
+
+procedure TOrFileWatcher.SetOnFileCriated(const Value: TSFileChangedEvent);
+begin
+  FOnFileCriated := Value;
+end;
+
+procedure TOrFileWatcher.SetOnFileDeleted(const Value: TSFileChangedEvent);
+begin
+  FOnFileDeleted := Value;
+end;
+
+
+procedure TOrFileWatcher.SetOnFileModified(const Value: TSFileChangedEvent);
+begin
+  FOnFileModified := Value;
+end;
+
+procedure TOrFileWatcher.SetOnFileRemamed(const Value: TSFileRenamedEvent);
+begin
+  FOnFileRemamed := Value;
+end;
+procedure TOrFileWatcher.SetSubTree(const Value: boolean);
+begin
+  FSubTree := Value;
+end;
+
+procedure TOrFileWatcher.Start;
+begin
+  if not Assigned( FWatchThread ) then
+    begin
+      FWatchThread :=TSWatchDirThread.Create(Self);
+      FWatchThread.Start;
+    end;
+end;
+
+procedure TOrFileWatcher.Stop;
+begin
+  inherited;
+  if Assigned(FWatchThread) then
+    begin
+      FWatchThread.Shutdown;
+      FWatchThread.WaitFor;
+      FreeAndNil(FWatchThread);
+    end;
+end;
+
+procedure Register;
+begin
+  RegisterComponents('MFS Utils',[TOrFileWatcher]);
+end;
+end.

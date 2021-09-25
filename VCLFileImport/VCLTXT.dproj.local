@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2017/05/04 21:31:54.000.305,=rtl.dcp</Transaction>
+    <Transaction>2017/05/04 21:32:03.000.553,C:\Users\Marcelo Fabiano\Documents\Embarcadero\Studio\Projects\OrUtils.dproj=C:\Users\Marcelo Fabiano\Documents\Embarcadero\Studio\Projects\Package1.dproj</Transaction>
+    <Transaction>2017/05/04 21:32:22.000.489,E:\Delphi\10\proj\Orionfox\OrUtils\OrUtils.dproj=C:\Users\Marcelo Fabiano\Documents\Embarcadero\Studio\Projects\OrUtils.dproj</Transaction>
+    <Transaction>2017/05/05 09:09:19.000.687,=E:\Delphi\10\proj\Orionfox\OrUtils\Unit1.pas</Transaction>
+    <Transaction>2017/05/05 09:09:28.000.739,E:\Delphi\10\proj\Orionfox\OrUtils\Unit1.pas=E:\Delphi\10\proj\Orionfox\OrUtils\OrUtils.pas</Transaction>
+    <Transaction>2017/05/05 11:07:21.000.851,=vcl.dcp</Transaction>
+    <Transaction>2017/09/04 10:35:35.000.112,E:\Delphi\10\proj\Orionfox\OrUtils\OrImport.dproj=E:\Delphi\10\proj\Orionfox\OrUtils\OrUtils.dproj</Transaction>
+    <Transaction>2018/08/02 21:13:06.000.754,D:\Delphi25\CupomNFCe\src\MFSImport\MFSTxtImport.dproj=D:\Delphi25\CupomNFCe\src\MFSImport\OrImport.dproj</Transaction>
+    <Transaction>2018/09/20 00:26:41.000.577,D:\Delphi25\ALib\MFSComps\MFSImport\MFSTxTImport.pas=D:\Delphi25\ALib\MFSComps\MFSImport\OrUtils.pas</Transaction>
+    <Transaction>2018/09/20 00:30:03.000.196,D:\Delphi25\ALib\MFSComps\MFSImport\MFSTxTs.dproj=D:\Delphi25\ALib\MFSComps\MFSImport\MFSTxtImport.dproj</Transaction>
+    <Transaction>2018/09/20 00:30:54.000.818,D:\Delphi25\ALib\MFSComps\MFSImport\MFSTXT.dproj=D:\Delphi25\ALib\MFSComps\MFSImport\MFSTxTs.dproj</Transaction>
+    <Transaction>2021/09/18 14:50:01.765,D:\Delphi28\prj\VCLFileImport\uVCLTxTImport.pas=D:\Delphi28\prj\VCLFileImport\MFSTxTImport.pas</Transaction>
+    <Transaction>2021/09/18 14:50:12.057,D:\Delphi28\prj\VCLFileImport\VCLTXT.dproj=D:\Delphi28\prj\VCLFileImport\MFSTXT.dproj</Transaction>
+  </Transactions>
+</BorlandProject>

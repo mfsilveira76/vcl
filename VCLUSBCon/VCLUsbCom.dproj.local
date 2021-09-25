@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2020/03/15 19:52:32.000.346,=rtl.dcp</Transaction>
+    <Transaction>2020/04/14 09:01:19.000.144,=rtl.dcp</Transaction>
+    <Transaction>2020/04/14 09:02:25.000.404,C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\Package1.dproj=C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\USBCon\UsbCom.dproj</Transaction>
+    <Transaction>2020/04/14 09:02:43.000.706,=C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\USBCon\Unit1.pas</Transaction>
+    <Transaction>2020/04/14 09:04:05.000.159,C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\USBCon\Unit1.pas=C:\Users\mfs-f\OneDrive\Documentos\Embarcadero\Studio\Projects\USBCon\U_Usb.pas</Transaction>
+    <Transaction>2020/04/14 09:04:15.000.124,=vcl.dcp</Transaction>
+    <Transaction>2021/09/24 13:30:59.000.087,D:\Delphi28\prj\VCLUSBCon\VCLUsbCom.dproj=D:\Delphi28\prj\VCLUSBCon\UsbCom.dproj</Transaction>
+    <Transaction>2021/09/24 13:31:19.000.549,D:\Delphi28\prj\VCLUSBCon\uVCLUSBCon.pas=D:\Delphi28\prj\VCLUSBCon\U_Usb.pas</Transaction>
+  </Transactions>
+</BorlandProject>

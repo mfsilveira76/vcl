@@ -1,0 +1,38 @@
+unit ufrmTest;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, uVCLUSBCon, Vcl.StdCtrls;
+
+type
+  TForm2 = class(TForm)
+    VCLUSBCon1: TVCLUSBCon;
+    Memo1: TMemo;
+    procedure VCLUSBCon1UsbDeviceArrival(Sender: TObject; sDevName, sKey,
+      Vendor, Product, Serial, FullPath: string);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form2: TForm2;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm2.VCLUSBCon1UsbDeviceArrival(Sender: TObject; sDevName, sKey,
+  Vendor, Product, Serial, FullPath: string);
+begin
+
+with Memo1 do
+  begin
+    Lines.Add(sDevName);
+  end;
+end;
+
+end.

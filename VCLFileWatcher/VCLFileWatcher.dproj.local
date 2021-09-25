@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2010/11/02 04:53:19.000.624,=rtl.dcp</Transaction>
+    <Transaction>2010/11/02 04:53:26.000.855,C:\Users\Marcelo Fabiano\Documents\RAD Studio\Projects\FileWatcher.dproj=C:\Users\Marcelo Fabiano\Documents\RAD Studio\Projects\Package1.dproj</Transaction>
+    <Transaction>2010/11/02 04:56:47.000.961,=D:\Delphi\Code\FileBroadCast\FileWatcher\FileWatcher.pas</Transaction>
+    <Transaction>2010/11/02 04:57:04.000.773,D:\Delphi\Code\FileBroadCast\FileWatcher\uFileWatcher.pas=D:\Delphi\Code\FileBroadCast\FileWatcher\FileWatcher.pas</Transaction>
+    <Transaction>2010/11/02 04:57:14.000.232,=vcl.dcp</Transaction>
+    <Transaction>2010/11/02 05:04:36.000.737,D:\Delphi\Code\FileBroadCast\FileWatcher\FileWatcher.dproj=C:\Users\Marcelo Fabiano\Documents\RAD Studio\Projects\FileWatcher.dproj</Transaction>
+    <Transaction>2017/05/04 21:43:06.000.408,E:\Delphi\10\proj\Orionfox\FileWatcher\FileWatcher_Berlin.dproj=E:\Delphi\10\proj\Orionfox\FileWatcher\FileWatcher.dproj</Transaction>
+    <Transaction>2017/05/04 21:43:14.000.609,E:\Delphi\10\proj\Orionfox\FileWatcher\FileWatcher.dproj=E:\Delphi\10\proj\Orionfox\FileWatcher\FileWatcher_Berlin.dproj</Transaction>
+    <Transaction>2018/08/02 21:12:16.000.258,D:\Delphi25\CupomNFCe\src\MFSFWatcher\MFSFileWatcher.dproj=D:\Delphi25\CupomNFCe\src\MFSFWatcher\FileWatcher.dproj</Transaction>
+    <Transaction>2018/09/20 00:26:58.000.742,D:\Delphi25\ALib\MFSComps\MFSFWatcher\MFSFileWatcher.pas=D:\Delphi25\ALib\MFSComps\MFSFWatcher\uFileWatcher.pas</Transaction>
+    <Transaction>2018/09/20 00:30:41.000.058,D:\Delphi25\ALib\MFSComps\MFSFWatcher\MFSFiles.dproj=D:\Delphi25\ALib\MFSComps\MFSFWatcher\MFSFileWatcher.dproj</Transaction>
+    <Transaction>2021/09/18 14:40:38.460,D:\delphi27\prj\MFSFWatcher\VCLFileWatcher.dproj=D:\delphi27\prj\MFSFWatcher\MFSFiles.dproj</Transaction>
+    <Transaction>2021/09/18 14:41:09.286,D:\delphi27\prj\MFSFWatcher\uVCLFileWatcher.pas=D:\delphi27\prj\MFSFWatcher\MFSFileWatcher.pas</Transaction>
+  </Transactions>
+</BorlandProject>
